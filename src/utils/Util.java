@@ -2,7 +2,7 @@ package utils;
 
 import utils.iterators.ArrayIterable;
 import utils.iterators.ArrayIterator;
-import utils.objects.KeyValueFeed;
+import utils.objects.*;
 
 import java.io.*;
 import java.net.URLDecoder;
@@ -18,6 +18,7 @@ import java.util.*;
  * Date: 26.04.14
  * Time: 20:20
  */
+@SuppressWarnings("unused")
 public class Util
 {
 
@@ -94,37 +95,12 @@ public class Util
     // если разделители идут подряд, между ними будут пустые части, аналогично, если разделитель стоит в конце;
     //аналог стандартного split, но тот игнорирует разделители в конце
 
-    public interface SliceHandlerT<T extends Throwable>
-    {
-        void processSlice(String string, int begin, int end) throws T;
-    }
-
-    public interface SliceHandler extends SliceHandlerT<RuntimeException>
-    {
-        //void processSlice(String string, int begin, int end);
-        public interface E extends SliceHandlerT<Exception>  {}
-        public interface IO extends SliceHandlerT<IOException>  {}
-    }
-
-    public static class SliceCounter implements SliceHandler
-    {
-        public int count;
-        public void processSlice(String string, int begin, int end)  {  count++;  }
-    }
-
-//    public static abstract class SliceCountHandler implements SliceHandler
-//    {
-//        public int index;
-//        public void processSlice(String string, int begin, int end)  {  processSlice(string, begin, end, index++);  }
-//        public abstract void processSlice(String string, int begin, int end, int index);
-//    }
-
-    public static <T extends Throwable> void slice(String string, char separator, SliceHandlerT<T> handler) throws T
+    public static <T extends Throwable> void slice(String string, char separator, Consumer<String, T> handler) throws T
     {
         for (int i=0; ; i++)  {
             int i0=i;
             i = indexOf(string, separator, i);
-            handler.processSlice (string, i0, i);
+            handler.process(string.substring(i0, i));
             if (i==string.length())  break;
         }
     }
@@ -135,19 +111,19 @@ public class Util
         int count = count(string, separator) + 1;
         //    установить значения и вернуть
         final String[] result = new String [count];
-        slice(string, separator, new SliceHandler()  {
+        slice(string, separator, new StringConsumer ()  {
             int i = 0;
-            public void processSlice(String string, int begin, int end)  {  result[i++] = string.substring(begin, end);  }
+            public void process(String string)  {  result[i++] = string;  }
         });
         return result;
     }
 
-    public static <T extends Throwable> void slice(String string, String separator, SliceHandlerT<T> handler) throws T
+    public static <T extends Throwable> void slice(String string, String separator, Consumer<String, T> consumer) throws T
     {
         for (int i=0; ; i+=separator.length())  {
             int i0=i;
             i = indexOf(string, separator, i);
-            handler.processSlice (string, i0, i);
+            consumer.process(string.substring(i0, i));
             if (i==string.length())  break;
         }
     }
@@ -158,17 +134,17 @@ public class Util
         int count = count(string, separator) + 1;
         //    установить значения и вернуть
         final String[] result = new String [count];
-        slice(string, separator, new SliceHandler()  {
+        slice(string, separator, new StringConsumer ()  {
             int i = 0;
-            public void processSlice(String string, int begin, int end)  {  result[i++] = string.substring(begin, end);  }
+            public void process(String string)  {  result[i++] = string;  }
         });
         return result;
     }
 
     public static <T extends Collection<String>> T slice(String string, String separator, final T result)
     {
-        slice(string, separator, new SliceHandler()  {
-            public void processSlice(String string, int begin, int end)  {  result.add(string.substring(begin, end));  }
+        slice(string, separator, new StringConsumer ()  {
+            public void process(String string)  {  result.add(string);  }
         });
         return result;
     }
@@ -194,26 +170,26 @@ public class Util
 
     //    sliceWords делит по пробельным символам; слова всегда не пустые
 
-    public static void sliceWords(String string, SliceHandler handler)
+    public static <T extends Throwable> void sliceWords(String string, Consumer<String, T> consumer) throws T
     {
         for (int i=0; ; )  {
             for (;;)  {  if (i==string.length())  return;  if (string.charAt(i)>' ')  break;  i++;  }
             int i0=i;
             for (;;)  {  i++;  if (i==string.length())  break;  if (string.charAt(i)<=' ')  break;  }
-            handler.processSlice (string, i0, i);
+            consumer.process (string.substring(i0, i));
         }
     }
 
     public static String[] sliceWords(String string)
     {
         //    посчитать количество
-        SliceCounter counter = new SliceCounter ();
+        Consumer.Counter<String> counter = new Consumer.Counter<String> ();
         sliceWords(string, counter);
         //    установить значения и вернуть
         final String[] result = new String [counter.count];
-        sliceWords(string, new SliceHandler()  {
+        sliceWords(string, new StringConsumer ()  {
             int i = 0;
-            public void processSlice(String string, int begin, int end)  {  result[i++] = string.substring(begin, end);  }
+            public void process(String string)  {  result[i++] = string;  }
         });
         return result;
     }
@@ -234,37 +210,37 @@ public class Util
     //    sliceRows
     //делит по разделителям строк, корректно обрабатывает разделители строк '\r', '\n' и '\r\n\'
 
-    public static <T extends Throwable> void sliceRows(String string, SliceHandlerT<T> handler) throws T
+    public static <T extends Throwable> void sliceRows(String string, Consumer<String, T> consumer) throws T
     {
         if (string.length()==0)  {
-            handler.processSlice(string, 0, 0);
+            consumer.process(string);
             return;
         }
         for (int in=-1, ir=-1; ; )  {
             int i0=ir+1;  //начало новой строки, будет установлено в Min(ir+1, in+1) или в in+1 для случая '\r\n'
             if (ir<=in)  {  ir = indexOf(string, '\r', ir+1);  }            //для ir<in и на первой итерации (ir=in) надо передвинуть ir
             if (in<=i0)  {  i0=in+1;  in = indexOf(string, '\n', in+1);  }  //для in<ir, in=ir+1 (случай '\r\n') и первой итерации надо передвинуть in
-            handler.processSlice (string, i0, ir<in ? ir : in);
+            consumer.process(string.substring(i0, ir < in ? ir : in));
             if (ir==string.length() && in==string.length())  break;
         }
     }
 
-    public static <T extends Throwable> void sliceRows(String string, boolean ignoreLast, SliceHandlerT<T> handler) throws T
+    public static <T extends Throwable> void sliceRows(String string, boolean ignoreLast, Consumer<String, T> consumer) throws T
     {
         if (ignoreLast)  string = cutLastRow(string);
-        sliceRows(string, handler);
+        sliceRows(string, consumer);
     }
 
     public static String[] sliceRows(String string)
     {
         //    calculate count
-        SliceCounter counter = new SliceCounter ();
+        Consumer.Counter<String> counter = new Consumer.Counter<String> ();
         sliceRows(string, counter);
         //    slice values and return
         final String[] result = new String [counter.count];
-        sliceRows(string, new SliceHandler ()  {
+        sliceRows(string, new StringConsumer ()  {
             int i=0;
-            public void processSlice(String string, int begin, int end)  {  result[i++] = string.substring(begin, end);  }
+            public void process(String string)  {  result[i++] = string;  }
         });
         return result;
     }
@@ -278,6 +254,7 @@ public class Util
 
 
     //    аналог javascript join
+    //TODO мне не нравится здесь обработка null как пустых строк, может лучше вообще ошибку кидать?
 
     public static String toString(Iterable<String> strings, String separator)
     {
@@ -413,24 +390,24 @@ public class Util
         if (n!=0)  for (int i=string.length()-1, c=-1; i>=0 && string.charAt(i)=='\\'; i--, c=-c)  n+=c;
         if (n==0)  return string;
         final char[] result = new char [string.length()-n];
-        slice(string, '\\', new SliceHandler ()
+        slice(string, '\\', new StringConsumer ()
         {
             int offset = 0;
             boolean last = false;
-            public void processSlice(String string, int begin, int end)
+            public void process(String string)
             {
-                if (begin==end)  {
+                if (string.length()==0)  {
                     if (last)  result[offset++] = '\\';
                     last = !last;
                 }
                 else  {
-                    string.getChars(begin, end, result, offset);
+                    string.getChars(0, string.length(), result, offset);
                     if (last)  {
                         if (result[offset]=='n')  result[offset]='\n';
                         else if (result[offset]=='r')  result[offset]='\r';
                         else if (result[offset]=='t')  result[offset]='\t';
                     }
-                    offset += end-begin;
+                    offset += string.length();
                     last = true;
                 }
 
@@ -887,35 +864,27 @@ public class Util
         ByteArray.write(file, content.getBytes(encoding));
     }
 
-    public static interface StringHandler<E extends Throwable>  {
-        public void processString(String string) throws E;
-    }
-
-    public static interface FileHandler<E extends Throwable>  {
-        public void processFile(File file) throws E;
-    }
-
-    public static <E extends Throwable> void listFiles(File dir, FileHandler<E> handler) throws E
+    public static <E extends Throwable> void listFiles(File dir, Consumer<File, E> handler) throws E
     {
         File[] files = dir.listFiles();
         if (files==null) return;
         for (File file : files)
             if (file.isDirectory())  listFiles(file, handler);
-            else  handler.processFile(file);
+            else  handler.process(file);
     }
 
     public static ArrayList<File> listFiles(File dir)
     {
         final ArrayList<File> result = new ArrayList<File> ();
-        listFiles(dir, new FileHandler<RuntimeException> () {
-            public void processFile(File file)  {
+        listFiles(dir, new Consumer.R<File> () {
+            public void process(File file)  {
                 result.add(file);
             }
         });
         return result;
     }
 
-    public static <E extends Throwable> void listFiles(String filename, FileHandler<E> handler) throws E  {  listFiles(new File (filename), handler);  }
+    public static <E extends Throwable> void listFiles(String filename, Consumer<File, E> handler) throws E  {  listFiles(new File (filename), handler);  }
     public static ArrayList<File> listFiles(String filename)  {  return listFiles(new File (filename));  }
 
     public static String incFileName(String fileName, boolean lastExtension)  {
@@ -1101,7 +1070,7 @@ public class Util
         return getBool(properties.getProperty(name), "настройка "+name, defaultValue);
     }
 
-    public static <T extends Exception> void getAll(Properties properties, String prefix, KeyValueHandler<String, String, T> handler) throws T  {
+    public static <T extends Exception> void getAll(Properties properties, String prefix, KeyValueConsumer<String, String, T> handler) throws T  {
         for (Object key : properties.keySet())  if (((String)key).startsWith(prefix))
             handler.process(((String)key).substring(prefix.length()), properties.getProperty((String)key));
     }

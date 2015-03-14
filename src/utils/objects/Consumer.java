@@ -9,7 +9,7 @@ import java.util.Collection;
  * Date: 20.12.14
  * Time: 1:09
  */
-public interface Consumer<T, E extends Exception>
+public interface Consumer<T, E extends Throwable>
 {
     public void process(T object) throws E;
 
@@ -17,10 +17,6 @@ public interface Consumer<T, E extends Exception>
     public interface R<T> extends Consumer<T, RuntimeException>  {}
     public interface IO<T> extends Consumer<T, IOException>  {}
 
-    public static class ToList<T> implements Consumer<T, RuntimeException>  {
-        public ArrayList<T> result = new ArrayList<T> ();
-        public void process(T object)  {  result.add(object);  }
-    }
 
     public static abstract class Instances
     {
@@ -29,5 +25,17 @@ public interface Consumer<T, E extends Exception>
                 public void process(T object)  {  collection.add(object); }
             };
         }
+    }
+
+    public static class ToList<T> implements Consumer<T, RuntimeException>
+    {
+        public ArrayList<T> result = new ArrayList<T> ();
+        public void process(T object)  {  result.add(object);  }
+    }
+
+    public static class Counter<T> implements Consumer<T, RuntimeException>
+    {
+        public int count;
+        public void process(T object)  {  count++;  }
     }
 }

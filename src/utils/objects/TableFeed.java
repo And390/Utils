@@ -1,6 +1,4 @@
-package utils;
-
-import java.io.IOException;
+package utils.objects;
 
 /**
  * User: And390

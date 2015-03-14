@@ -1,4 +1,6 @@
-package utils;
+package utils.objects;
+
+import utils.Util;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -60,7 +62,7 @@ public interface TableHandler<E extends Exception>
         }
 
         public boolean getBool(String name, String trueValue, String falseValue) throws Exception  {
-            return Util.getBool(get(name), "колонки "+name, trueValue, falseValue);
+            return Util.getBool(get(name), "колонки " + name, trueValue, falseValue);
         }
 
         public double getDouble(String name, DecimalFormat format) throws Exception  {
