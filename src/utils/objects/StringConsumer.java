@@ -15,10 +15,6 @@ public interface StringConsumer extends Consumer<String, RuntimeException>
     @Override
     public void process(String string);
 
-//    public interface E extends StringConsumer<Exception> {}
-//    public interface R extends StringConsumer<RuntimeException> {}
-//    public interface IO extends StringConsumer<IOException>  {}
-
 
     public static class ToList implements StringConsumer
     {

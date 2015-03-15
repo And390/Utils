@@ -1,11 +1,9 @@
 package utils;
 
 import utils.iterators.ArrayIterable;
-import utils.iterators.ArrayIterator;
 import utils.objects.*;
 
 import java.io.*;
-import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -24,21 +22,15 @@ public class Util
 
     //----------------        system        ----------------
 
-    public static boolean isWindows()  {  return System.getProperty("os.name").indexOf("Windows")!=-1;  }
+    public static boolean isWindows()  {  return System.getProperty("os.name").contains("Windows");  }
 
-	public static boolean isMac()  {  return System.getProperty("os.name").indexOf("Mac OS")!=-1;  }
+	public static boolean isMac()  {  return System.getProperty("os.name").contains("Mac OS");  }
 
-	public static boolean isLinux()  {  return System.getProperty("os.name").indexOf("Linux")!=1;  }
+	public static boolean isLinux()  {  return System.getProperty("os.name").contains("Linux");  }
 
     public static String getRunningName() throws UnsupportedEncodingException
     {
         return new File(Util.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getName();
-    }
-
-    //???
-    public static String getRunningPath() throws UnsupportedEncodingException  {
-        String path = Util.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        return URLDecoder.decode(path, "UTF-8");
     }
 
 
@@ -252,24 +244,24 @@ public class Util
     }
 
 
-
     //    аналог javascript join
-    //TODO мне не нравится здесь обработка null как пустых строк, может лучше вообще ошибку кидать?
 
     public static String toString(Iterable<String> strings, String separator)
     {
-        //    посчитать длину целиком и заодно количество элементов
+        //    посчитать длину целиком и количество элементов, проверить null-значения
         int len = 0;
         int size = 0;
-        for (String string : strings)  if (string!=null)  {  len += string.length() + separator.length();  size++;  }
+        for (String string : strings)
+            if (string!=null)  {  len += string.length() + separator.length();  size++;  }
+            else  throw new NullPointerException ("toString is not support nulls");
         //    если элементов ноль или один, эффективней сразу вернуть результат
         if (size==0)  return "";
-        if (size==1)  for (String string : strings)  if (string!=null)  return string;
+        if (size==1)  return strings.iterator().next();
         len -= separator.length();  //теперь можно удалить последний разделитель
         //    выделить буфер и скопировать туда байты
         char[] buffer = new char [len];
         int destOffset = 0;
-        for (String string : strings)  if (string!=null)  {
+        for (String string : strings)  {
             string.getChars(0, string.length(), buffer, destOffset);
             destOffset += string.length();
             if (separator.length()!=0 && destOffset!=len)  {
@@ -291,6 +283,15 @@ public class Util
     public static String toString(String[] strings)  {
         return toString(new ArrayIterable<String>(strings), "");
     }
+
+    public static class TestToString  {
+        public static void main(String[] args)  {
+            System.out.println(Util.toString(new String[]{}));
+            System.out.println(Util.toString(new String[]{"xxx"}));
+            System.out.println(Util.toString(new String[]{"abc", "", "def"}));
+        }
+    }
+
 
     //    прочие вспомогательные функции со строками
 
@@ -508,125 +509,6 @@ public class Util
 
     //----------------        форматирование таблицы        ----------------
 
-    public static <E extends Exception> void toStringList(List<String> result, String separator, String lineEnd, TableFeed<E> table) throws E
-    {
-        int resultOffset = result.size();
-        lineEnd = new String (lineEnd);  //теперь можно использовать lineEnd как уникальную константу, которая может быть добавлена только этой функцией
-
-        //    считать все строки
-        int maxColCount = 0;
-        for (int r=0; ; r++)  {
-            String[] row = table.nextRow(r);
-            if (row==null)  break;
-            for (int i=0; i<row.length; i++)  {
-                if (maxColCount < i+1)  maxColCount = i+1;
-                if (table.isRightAligned(r, i))  {  result.add(null);  result.add(row[i]);  }
-                else  {  result.add(row[i]);  result.add(null);  }
-                result.add(separator);
-            }
-            result.set(result.size()-1, lineEnd);
-        }
-
-        //    посчитать максимальные размеры колонок
-        int[] maxSize = new int [maxColCount];
-        for (int i=resultOffset, col=0; i<result.size(); )  {
-            if (result.get(i)==lineEnd)  {  col=0;  i++;  continue;  }
-            String value = result.get(i)!=null ? result.get(i) : result.get(i+1);
-            if (maxSize[col] < value.length())  maxSize[col] = value.length();
-            col++;
-            if (result.get(i+2)==lineEnd)  col=0;
-            i+=3;
-        }
-
-        //    буфер для пробелов
-        int maxMaxSize = 0;
-        for (int size : maxSize)  if (maxMaxSize<size)  maxMaxSize = size;
-        char[] buffer = new char [maxMaxSize];
-        for (int i=0; i<maxMaxSize; i++)  buffer[i] = ' ';
-
-        //    вставить нужное количество пробелов
-        for (int i=resultOffset, col=0; i<result.size(); )  {
-            if (result.get(i)==lineEnd)  {  col=0;  i++;  continue;  }
-            if (result.get(i)!=null)  result.set(i+1, new String (buffer, 0, maxSize[col] - result.get(i).length()));
-            else  result.set(i, new String (buffer, 0, maxSize[col] - result.get(i+1).length()));
-            col++;
-            if (result.get(i+2)==lineEnd)  col=0;
-            i+=3;
-        }
-    }
-
-    public static <E extends Exception> ArrayList<String> toStringList(String separator, String lineEnd, TableFeed<E> table) throws E  {
-        ArrayList<String> result = new ArrayList<String> ();
-        toStringList(result, separator, lineEnd, table);
-        return result;
-    }
-
-    public static <E extends Exception> String toString(String separator, String lineEnd, TableFeed<E> table) throws E  {
-        ArrayList<String> buffer = toStringList(separator, lineEnd, table);
-        return toString(buffer);
-    }
-
-    public static class IteratorTableFeed implements TableFeed<RuntimeException>
-    {
-        private Iterator<String[]> iterator;
-        public IteratorTableFeed(Iterator<String[]> iterator)  {  this.iterator = iterator;  }
-        public IteratorTableFeed(Iterable<String[]> iterable)  {  this.iterator = iterable.iterator();  }
-        public IteratorTableFeed(String[][] array)  {  this.iterator = new ArrayIterator<String[]>(array);  }
-
-        public String[] nextRow(int rowIndex)
-        {
-            if (!iterator.hasNext())  return null;
-            return iterator.next();
-        }
-
-        public boolean isRightAligned(int rowIndex, int colIndex)  {  return false;  }
-    }
-
-    public static String toString(String separator, String lineEnd, Iterable<String[]> strings)  {
-        return toString(separator, lineEnd, new IteratorTableFeed (strings));
-    }
-
-    public static String toString(String separator, String lineEnd, String[][] strings)  {
-        return toString(separator, lineEnd, new IteratorTableFeed (strings));
-    }
-
-//    public static <E extends Throwable> void print(String separator, String lineEnd, TableFeed<E> feed) throws E  {
-//        ArrayList<String> result = toStringList(separator, lineEnd, feed);
-//        for (String row : result)  System.out.print(row);
-//    }
-//
-//    public static void print(String separator, String lineEnd, Iterable<String[]> strings)  {
-//        ArrayList<String> result = toStringList(separator, lineEnd, new IteratorTableFeed (strings));
-//        for (String row : result)  System.out.print(row);
-//    }
-//
-//    public static void print(String separator, String lineEnd, String[][] strings) throws IOException  {
-//        ArrayList<String> result = toStringList(separator, lineEnd, new IteratorTableFeed (strings));
-//        for (String row : result)  System.out.print(row);
-//    }
-
-    public static String toString(String separator, String lineEnd, final boolean[] rightAligned, final String... values) throws IOException
-    {
-        return toString(separator, "\n", new TableFeed.RT ()
-        {
-            String[] row = new String [rightAligned.length];
-
-            public String[] nextRow(int rowIndex)
-            {
-                System.arraycopy(values, rowIndex*row.length, row, 0, row.length);
-                return row;
-            }
-
-            public boolean isRightAligned(int rowIndex, int colIndex)
-            {
-                return rightAligned[colIndex];
-            }
-        });
-    }
-
-
-    //    вторая версия функционала
-
     // Форматирует таблицу вставляя нужное количество пробелов. Основная базовая версия функции.
     // Таблица передается в виде массива, содержащего значения и разделители колонок и строк.
     // Пробелы вставляются на место разделителей колонок (последняя колонка может его не иметь, тогда не будет и пробелов).
@@ -710,16 +592,23 @@ public class Util
         }
     }
 
-    // возвращает соединенную строку и вызывает формат с разделителями:
+    //     Следующие версии format сразу возвращают соединенную строку (formatToArray возвращает массив)
+
+    // вызывает формат с разделителями:
     //   colEndLeft    null
     //   colEndRight   "\r"
     //   colEndMiddle  "\f"
     //   linEnd        "\n"
+    public static String[] formatToArray(String... strings)
+    {
+        format("\t", "\r", "\f", "\n", strings);
+        return strings;
+    }
     public static String format(String... strings)
     {
-        format(null, "\r", "\f", "\n", strings);
-        return toString(strings);
+        return toString(formatToArray(strings));
     }
+    public static String format(Collection<String> strings)  {  return format(strings.toArray(new String [strings.size()]));  }
 
     // Версия функции, принимающая двумерный массив и массив значений для выравнивания колонок
     //   colSep   разделитель колонок (помимо вырвавнивающих пробелов), добавляется после каждой колонки, кроме последней в строке
@@ -780,8 +669,8 @@ public class Util
         {
             System.out.println(format(
                     "h1", "  ", "\f", "h2", "\f", "\n",
-                    "xxx:", "  ", null, "123", "\r", "\n",
-                    "aaa bbb ccc:", "  ", null, "12345", "\r", "\n"));
+                    "xxx:", "  ", "\t", "123", "\r", "\n",
+                    "aaa bbb ccc:", "  ", "\t", "12345", "\r", "\n"));
 
             System.out.println(format("  ", "\n", new int[] { -1, 1 }, new String[][] {
                     new String [] { "h1", "h2", },
@@ -1122,28 +1011,7 @@ public class Util
 
     //----------------        всякая фигня        ----------------
 
-    /**
-     * вызывает указанный action, в случае ошибки пытается сделать это еще attemptsCount раз через interval
-     * @param action action
-     * @param attemptsCount must be >= 1
-     * @param interval interval
-     * @throws InterruptedException if interrupted before inner action call
-     */
-    public static void doAttempts(Runnable action, int attemptsCount, int interval)  throws InterruptedException
-    {
-        for (;;)
-        {
-            try {  action.run();  break;  }
-            catch (RuntimeException e)
-            {
-                e.printStackTrace();
-                attemptsCount--;
-                if (attemptsCount==0)  throw e;
-                Thread.sleep(interval);
-            }
-        }
-    }
-
+    // TODO этому методу место в ArrayUtils (или CheckUtils)
     public static <Type> ArrayList<Type> asList (Object... items)  throws NoSuchFieldException, IllegalAccessException
     {
         ArrayList<Type> list = new ArrayList<Type> ();

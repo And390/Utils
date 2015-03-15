@@ -7,10 +7,10 @@ import java.util.Iterator;
  * Date: 17.09.14
  * Time: 21:56
  */
-public interface StringProducer<E extends Throwable> extends Producer<String, E>
+public interface StringProducer extends Producer<String, RuntimeException>
 {
-    public static interface E extends StringProducer<Exception> {}
-    public static interface R extends StringProducer<RuntimeException> {}
+    @Override
+    public String next();
 
 
     public static abstract class Instances

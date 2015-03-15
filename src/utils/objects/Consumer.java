@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
+ * Consumer - последовательно обрабатывает какие-то объекты. Интерфес общего назначения.
  * User: And390
  * Date: 20.12.14
  * Time: 1:09

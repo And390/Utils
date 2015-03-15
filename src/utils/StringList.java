@@ -67,35 +67,6 @@ public class StringList extends ArrayList<String> implements RuntimeAppendable
         return this;
     }
 
-    //    аналог javascript: Array.join
-//    @Override
-//    public String toString()
-//    {
-//        if (size()==0)  return "";
-//        if (size()==1)  return get(0);
-//        //    calculate capacity
-//        int len = length();
-//        //    write all items to buffer
-//        char[] buffer = new char [len];
-//        getChars(buffer, 0);
-//        return new String(buffer);
-//    }
-//
-//    //    длина всех символов
-//    public int length()  {
-//        int len = 0;
-//        for (String string : this)  len += string.length();
-//        return len;
-//    }
-//
-//    //    скопировать все символы подряд в буфер
-//    public void getChars(char dest[], int destOffset) {
-//        for (String string : this)  {
-//            string.getChars(0, string.length(), dest, destOffset);
-//            destOffset += string.length();
-//        }
-//    }
-
     @Override
     public String toString()
     {
