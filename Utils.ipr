@@ -51,6 +51,10 @@
           <option name="processComments" value="true" />
         </inspection_tool>
         <inspection_tool class="StringEquality" enabled="false" level="WARNING" enabled_by_default="false" />
+        <inspection_tool class="UnnecessaryLocalVariable" enabled="true" level="WARNING" enabled_by_default="true">
+          <option name="m_ignoreImmediatelyReturnedVariables" value="true" />
+          <option name="m_ignoreAnnotatedVariables" value="false" />
+        </inspection_tool>
       </profile>
     </profiles>
     <option name="PROJECT_PROFILE" value="Project Default" />

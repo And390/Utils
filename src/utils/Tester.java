@@ -90,9 +90,9 @@ public class Tester
     {
         if (received==null && expected==null)  return;
         if (expected==null)  throw new Exception ("value must be null: "+toString(received));
-        if (received==null)  throw new Exception ("null value received");
+        if (received==null)  throw new Exception ("null value received, but expected: "+toString(expected));
         if (expected.getClass().isArray())  {
-            if (!received.getClass().isArray())  throw new Exception ("array expected: "+toString(received));
+            if (!received.getClass().isArray())  throw new Exception ("array expected, but received: "+toString(received));
             int rlen = Array.getLength(received);
             int elen = Array.getLength(expected);
             if (rlen!=elen)  throw new Exception ("array length are not match ("+rlen+"<>"+elen+"): "+toString(received));

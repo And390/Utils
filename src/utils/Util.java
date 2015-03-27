@@ -219,7 +219,7 @@ public class Util
 
     public static <T extends Throwable> void sliceRows(String string, boolean ignoreLast, Consumer<String, T> consumer) throws T
     {
-        if (ignoreLast)  string = cutLastRow(string);
+        if (ignoreLast)  string = cutLastNL(string);
         sliceRows(string, consumer);
     }
 
@@ -239,7 +239,7 @@ public class Util
 
     public static String[] sliceRows(String string, boolean ignoreLast)
     {
-        if (ignoreLast)  string = cutLastRow(string);
+        if (ignoreLast)  string = cutLastNL(string);
         return sliceRows(string);
     }
 
@@ -345,11 +345,20 @@ public class Util
         return i==-1 ? string : string.substring(i+target.length());
     }
 
-    public static String cutLastRow(String string)  {
+    public static String cutLastNL(String string)  {
         if (string.endsWith("\r\n"))  string = Util.cut(string, 2);
         else if (string.endsWith("\n"))  string = Util.cut(string, 1);
         else if (string.endsWith("\r"))  string = Util.cut(string, 1);
         return string;
+    }
+
+    public static String cutLastLine(String string)  {
+        int i = string.lastIndexOf('\n');
+        int i2 = string.indexOf('\r', i+1);
+        if (i2!=-1)  i = i2;
+        else if (i>0 && string.charAt(i-1)=='\r')  i--;
+        return i==-1 ? string : string.substring(0, i);
+
     }
 
     public static String ellipsis(String source, int n)  {
@@ -504,6 +513,32 @@ public class Util
             check("xxxxxx", "xxx", "yy", "yyyy");
             check("axxxbbxxxc", "xxx", "yy", "ayybbyyc");
         }
+    }
+
+    public static String fillChars(char ch, int count)
+    {
+        char[] buffer = new char [count];
+        Arrays.fill(buffer, ch);
+        return new String (buffer);
+    }
+
+    //        ----    работа с путями    ----
+
+    public static boolean startsWithPath(String path, String prefix, int offset)
+    {
+        return path.startsWith(prefix, offset) && (path.length()==prefix.length()+offset || path.charAt(prefix.length()+offset)=='/');
+    }
+    public static boolean startsWithPath(String path, String prefix)  {  return startsWithPath(path, prefix, 0);  }
+
+    public static String cutStartPath(String path)
+    {
+        boolean absolute = path.startsWith("/");
+        return path.substring(indexOf(path, '/', absolute ? 1 : 0) + (absolute ? 0 : 1));
+    }
+
+    public static String parentPath(String path)
+    {
+        return path.substring(0, path.lastIndexOf('/')+1);
     }
 
 
@@ -820,6 +855,18 @@ public class Util
         return fileName.substring(0, i) + suffix + fileName.substring(i);
     }
     public static String addFileName(String fileName, String suffix)  {  return addFileName(fileName, suffix, false);  }
+
+    public static void mkdir(File file) throws IOException  {
+        if (!file.mkdir())  throw new IOException ("Can't make a new directory "+file);
+    }
+
+    public static void delete(File file) throws IOException  {
+        if (!file.delete())  throw new IOException ("Can't delete a file or directory "+file);
+    }
+
+    public static void renameTo(File src, File dst) throws IOException  {
+        if (!src.renameTo(dst))  throw new IOException ("Can't rename "+src+" to "+dst);
+    }
 
 
     //----------------        get abstract values functions        ----------------
