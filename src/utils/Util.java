@@ -358,7 +358,6 @@ public class Util
         if (i2!=-1)  i = i2;
         else if (i>0 && string.charAt(i-1)=='\r')  i--;
         return i==-1 ? string : string.substring(0, i);
-
     }
 
     public static String ellipsis(String source, int n)  {
