@@ -3,9 +3,7 @@ package utils;
 import java.io.IOException;
 
 /**
- * User: And390
- * Date: 26.09.14
- * Time: 3:37
+ * And390 - 26.09.14
  */
 public interface RuntimeAppendable extends Appendable
 {

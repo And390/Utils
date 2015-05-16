@@ -5,9 +5,7 @@ import java.util.Arrays;
 import java.util.Random;
 
 /**
- * User: andreyzaharov
- * Date: 29.09.2011
- * Time: 13:54:29
+ * And390 - 29.09.2011
  */
 public class ByteArray {
 
@@ -241,23 +239,15 @@ public class ByteArray {
 
     //----------------        allocation        ----------------
 
-    //TODO пора переходить на jdk6
-    //эквивалент из jdk6 Arrays.copyOf
-    public static byte[] copyOf(byte[] data, int length)
-    {
-        byte[] result = new byte [length];
-        for (int i = length>data.length ? data.length : length; i!=0; )  {  i--;  result[i] = data[i];  }
-        return result;
-    }
+    private static final int START_CAPACITY = 1024 - 16;
 
-    private static final int START_CAPACITY = 1024;
-
+    // увеличивает объем памяти в два раза, но не меньше переданного значения и не меньше START_CAPACITY
     public static byte[] realloc(byte[] data, int size)
     {
         int capacity = data.length * 2;
         if (capacity<size)  capacity = size;
         if (capacity<START_CAPACITY)  capacity = START_CAPACITY;
-        return copyOf(data, capacity);
+        return Arrays.copyOf(data, capacity);
     }
 
     //----------------        object        ----------------
@@ -281,57 +271,20 @@ public class ByteArray {
     public String toString(String encoding) throws UnsupportedEncodingException  {  return new String (data, 0, size, encoding);  }
     public String toString(int offset, String encoding) throws UnsupportedEncodingException  {  return new String (data, offset, size-offset, encoding);  }
 
-    //----------------        input        ----------------
+    //----------------        io        ----------------
 
-//    public static byte[] read(InputStream input) throws IOException
-//    {
-//        int available = input.available();
-//        if (available<16)  available=START_CAPACITY;
-//        byte[] data = new byte [available];
-//        int size = 0;
-//        for (;;) {
-//            int readed = input.read(data, size, data.length-size);
-//            if (readed==-1)  break;
-//            if (readed==0)  {  data = realloc(data, size);  continue;  }
-//            size += readed;
-//            data = provide(data, size, input.available());
-//        }
-//        if (size!=data.length)  return copyOf(data, size);
-//        return data;
-//    }
-
+    // читает поток целиком в массив байтов
     public static byte[] read(InputStream input) throws IOException
     {
-        int availableSize = input.available();
-        byte[] data = new byte [availableSize<16 ? START_CAPACITY : availableSize];
-        int size = 0;
-        for (;;)  {
-            int readed = input.read(data, size, data.length-size);
-            if (readed==-1)  break;
-            size += readed;
-            if (size==data.length)
-                if (size==availableSize)  {
-                    readed = input.read();
-                    if (readed==-1)  break;
-                    availableSize = size + 1 + input.available();
-                    data = realloc(data, availableSize);
-                    data[size++] = (byte) readed;
-                }
-                else  {
-                    data = realloc(data, size);
-                }
-        }
-        if (size!=data.length)  return copyOf(data, size);
-        return data;
+        return read(input, input.available());
     }
 
-    // если известен размер (например, ZipInputStream) эта функция более эффективна
-    // TODO переименовать и объединить с предыдущей функцией
-    public static byte[] readApprx(InputStream input, int expectedSize) throws IOException
+    // эффективный вариант, если известен размер (например, ZipInputStream) точно или хотя бы предположительно
+    public static byte[] read(InputStream input, int expectedSize) throws IOException
     {
         // цикл идет в двух режимах: когда размер буфера (data.length) равен expectedSize,
         // при заполнении буфера проверяется, есть ли еще данные в потоке и перевыделение буфера идет с учетом available(),
-        // (если она вернет значение меньше размера буфера, то будет переключение на более второй простой режим)
+        // (если она вернет значение меньше удвоенного размера буфера, то будет переключение на более простой второй режим)
         // когда не равен, размер буфера просто всегда удваивается (первый режим может сократить количество realloc-ов)
         byte[] data = new byte [expectedSize<2 ? START_CAPACITY : expectedSize];
         int size = 0;
@@ -361,7 +314,7 @@ public class ByteArray {
         byte[] data = new byte [expectedSize];
         for (int size=0;;)  {
             int readed = input.read(data, size, expectedSize-size);
-            if (readed==-1)  throw new RuntimeException ("Unexpected end of stream: readed "+size+" bytes expected "+expectedSize+" bytes");
+            if (readed==-1)  throw new RuntimeException ("Unexpected end of stream: readed "+size+" bytes, expected "+expectedSize+" bytes");
             size += readed;
             if (size==expectedSize)  {
                 if (input.read()!=-1)  throw new RuntimeException ("Stream has more data than expected: "+expectedSize+" bytes");
@@ -390,9 +343,7 @@ public class ByteArray {
         FileInputStream input = new FileInputStream (file);
         try  {
             if (size>Integer.MAX_VALUE)  throw new IOException ("File is too large: "+size+" bytes");
-            byte[] data = new byte [(int)size];
-            input.read(data);
-            return data;
+            return readFixed(input, (int)size);
         }
         finally  {  input.close();  }
     }

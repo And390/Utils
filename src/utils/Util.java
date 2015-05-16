@@ -19,6 +19,7 @@ import java.util.*;
 @SuppressWarnings("unused")
 public class Util
 {
+    private Util()  {}
 
     //----------------        system        ----------------
 
@@ -376,22 +377,86 @@ public class Util
     }
 
     public static String quote(String string)  {
-        return '"'+escape(string, '"')+'"';
+        return quote(string, new StringList()).toString();
+    }
+    public static RuntimeAppendable quote(String string, RuntimeAppendable result)  {
+        return escape(string, result.append('"'), new char[]{'\\', '"', '\t', '\r', '\n'},
+                new String[]{"\\\\", "\\\"", "\\t", "\\r", "\\n"}).append('"');
     }
 
-    public static RuntimeAppendable quote(String string, RuntimeAppendable appendable)  {
-        return escape(string, appendable.append('"'), '"').append('"');
+    public static String escape(String string)  {
+        return escape(string, new StringList ()).toString();
+    }
+    public static RuntimeAppendable escape(String string, RuntimeAppendable result)  {
+        return escape(string, result, new char[] { '\\', '\t', '\r', '\n' }, new String[] { "\\\\", "\\t", "\\r", "\\n" });
     }
 
     public static String escape(String string, char... chars)  {
-        string = string.replace("\\", "\\\\").replace("\t", "\\t").replace("\r", "\\r").replace("\n", "\\n");
-        for (char c : chars)  string = string.replace(""+c, "\\"+c);
-        return string;
+        return escape(string, new StringList (), chars).toString();
+    }
+    public static RuntimeAppendable escape(String string, RuntimeAppendable result, char... chars)  {
+        chars = Arrays.copyOf(chars, chars.length+1);
+        chars[chars.length-1] = '\\';
+        return escape(string, result, "\\", chars);
+    }
+    public static RuntimeAppendable escape(String string, RuntimeAppendable result, String escapeChar, char... chars)  {
+        String[] replacers = new String [chars.length];
+        for (int i=0; i<chars.length; i++)  replacers[i] = escapeChar+chars[i];
+        return escape(string, result, chars, replacers);
     }
 
-    public static RuntimeAppendable escape(String string, RuntimeAppendable appendable, char... chars)  {
-        //TODO escape to appendable
-        return appendable.append(escape(string, chars));
+    public static RuntimeAppendable escape(String string, RuntimeAppendable result, char[] targets, String[] replacers)  {
+        escape(string, result, targets, replacers, 0);
+        return result;
+    }
+    private static void escape(String string, RuntimeAppendable result, char[] targets, String[] replacers, int index)  {
+        if (index==targets.length)  {
+            result.append(string);
+            return;
+        }
+        for (int i=0;; i++)  {
+            //    find next occurence of char that need to be escaped
+            int i0 = i;
+            i = string.indexOf(targets[index], i);
+            if (i==-1)  {
+                //    if end, add last part and exit
+                if (i0!=0)  string = string.substring(i0);
+                escape(string, result, targets, replacers, index+1);
+                break;
+            }
+            //    add part before finded char
+            if (i0!=i)  {
+                if (i0+1==i)  {
+                    //    escape rest specail chars in this one-char part
+                    char c = string.charAt(i0);
+                    for (int t=index; ; t++)
+                        if (t==targets.length)  {  result.append(c);  break;  }
+                        else if (c==targets[t])  {  result.append(replacers[t]);  break;  }
+                }
+                else  {
+                    //    recursively escape rest specail chars in this part
+                    String part = string.substring(i0, i);
+                    escape(part, result, targets, replacers, index+1);
+                }
+            }
+            //    add escaped char
+            result.append(replacers[index]);
+        }
+    }
+
+    private static class Test  {
+        public static void check(String source, String expect) throws Exception  {
+            String result = escape(source);
+            System.out.println(result);
+            if (!result.equals(expect))  throw new Exception ("is not equal to: "+expect);
+        }
+        public static void main(String[] args) throws Exception  {
+            check("", "");
+            check(" abc\f", " abc\f");
+            check("\\", "\\\\");
+            check("a\tb", "a\\tb");
+            check("xxx\rx\nyyy\\zzz", "xxx\\rx\\nyyy\\\\zzz");
+        }
     }
 
     public static String unescape(String string)  {
@@ -537,7 +602,18 @@ public class Util
 
     public static String parentPath(String path)
     {
-        return path.substring(0, path.lastIndexOf('/')+1);
+        return path.substring(0, path.lastIndexOf('/') + 1);
+    }
+
+    // возвращает дочерний путь относительно базового, если тот внутри него
+    // плюс обрабатывает нативные пути (включая . и ..)
+    public static String subFilePath(File baseFile, File childFile) throws IOException  {
+        String base = baseFile.getCanonicalPath();
+        String child = childFile.getCanonicalPath();
+        return startsWithPath(child, base) ? child.substring(base.length()) : null;
+    }
+    public static String subFilePath(String base, String child) throws IOException  {
+        return subFilePath(new File(base), new File(child));
     }
 
 
@@ -810,6 +886,24 @@ public class Util
     public static <E extends Throwable> void listFiles(String filename, Consumer<File, E> handler) throws E  {  listFiles(new File (filename), handler);  }
     public static ArrayList<File> listFiles(String filename)  {  return listFiles(new File (filename));  }
 
+    // изменяет расширение файла (lastExtension - расширение определяется по последней точки или по первой)
+    public static String setFileExt(String fileName, String ext, boolean lastExtension)  {
+        //    определить позицию имени файла (последний слэш)
+        int i0 = fileName.lastIndexOf('/') + 1;
+        if (!File.separator.equals("/"))  {
+            int i02 = fileName.lastIndexOf(File.separator) + 1;
+            if (i02>i0)  i0 = i02;
+        }
+        //    определить позицию расширения файла (первая точка в имени файла)
+        int i;
+        if (lastExtension)  {  i = fileName.lastIndexOf('.');  if (i<i0)  i = fileName.length();  }
+        else  i = indexOf(fileName, '.', i0);
+        //    заменить расширение
+        return fileName.substring(0, i) + ext;
+    }
+    public static String setFileExt(String fileName, String ext)  {  return setFileExt(fileName, ext, false);  }
+
+    // добавляет к имени файла (2) перед расширением, или, если там уже есть такая цифра, увеличивает её на один
     public static String incFileName(String fileName, boolean lastExtension)  {
         //    определить позицию имени файла (последний слэш)
         int i0 = fileName.lastIndexOf('/') + 1;
@@ -834,11 +928,15 @@ public class Util
     }
     public static String incFileName(String fileName)  {  return incFileName(fileName, false);  }
 
+    // версия, которая циклически делает то же, если файл существует (пока не будет найден не существующих)
     public static String incFileNameWhileExists(String fileName, boolean lastExtension)  {
         while (new File (fileName).exists())  fileName = incFileName(fileName, lastExtension);
         return fileName;
     }
 
+    public static String incFileNameWhileExists(String fileName)  {  return incFileNameWhileExists(fileName, false);  }
+
+    // добавляет suffix к имени файла перед расширением (lastExtension - расширение определяется по последней точки или по первой)
     public static String addFileName(String fileName, String suffix, boolean lastExtension)  {
         //    определить позицию имени файла (последний слэш)
         int i0 = fileName.lastIndexOf('/') + 1;

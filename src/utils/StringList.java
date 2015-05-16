@@ -3,9 +3,8 @@ package utils;
 import java.util.ArrayList;
 
 /**
- * User: And390
- * Date: 25.12.13
- * Time: 14:45
+ * Since Java 7 it is not more effective than StringBuilder
+ * And390 - 25.12.2013
  */
 public class StringList extends ArrayList<String> implements RuntimeAppendable
 {
