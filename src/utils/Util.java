@@ -957,7 +957,14 @@ public class Util
         if (!file.mkdir())  throw new IOException ("Can't make a new directory "+file);
     }
 
+    // может быть сделать отдельный метод delete для удаления файла по дефолту, а этот переименовать?
+    // все-таки чаще нужно удалять отдельные файлы, а непредусмотренное удаление каталога может быть опасно
     public static void delete(File file) throws IOException  {
+        if (file.isDirectory())  {
+            File[] childs = file.listFiles();
+            if (childs==null)  throw new IOException ("Can't list files of "+file);
+            for (File child : childs)  delete(child);
+        }
         if (!file.delete())  throw new IOException ("Can't delete a file or directory "+file);
     }
 
@@ -968,85 +975,92 @@ public class Util
 
     //----------------        get abstract values functions        ----------------
 
-    public static <T> T checkNotNull(T value, String name) throws Exception {
-        if (value==null)  throw new Exception ("Отсутствует значение "+name);
+    public static <T> T checkNotNull(T value, String name) throws ConfigException {
+        if (value==null)  throw new ConfigException ("No "+name);
         return value;
     }
 
-    public static String checkNotEmpty(String value, String name) throws Exception
+    public static String checkNotEmpty(String value, String name) throws ConfigException
     {
         checkNotNull(value, name);
-        if (value.length()==0)  throw new Exception ("Пустое значение "+name);
+        if (value.length()==0)  throw new ConfigException ("Empty "+name);
         return value;
     }
 
-    public static int getInt(String value, int minValue, int maxValue, String name, String errorEnding) throws Exception
+    public static int getInt(String value, String name, int minValue, int maxValue, String errorEnding) throws ConfigException
     {
         checkNotEmpty(value, name);
         try  {  int result = Integer.parseInt(value);
-                if (result<minValue || result>maxValue)  throw new Exception ();
+                if (result<minValue || result>maxValue)  throw new ConfigException ();
                 return result;  }
-        catch (NumberFormatException e)  {  throw new Exception ("Неправильное значение "+name+errorEnding+": "+value);  }
+        catch (NumberFormatException e)  {  throw new ConfigException ("Wrong "+name+errorEnding+": "+value);  }
     }
 
-    public static int getInt(String value, String name) throws Exception  {
-        return getInt(value, Integer.MIN_VALUE, Integer.MAX_VALUE, name, " (ожидалось целое число)");
+    public static int getInt(String value, String name, int minValue, int maxValue) throws ConfigException  {
+        return getInt(value, name, minValue, maxValue, " (integer in range "+minValue+".."+maxValue+" expected)");
     }
 
-    public static int getUInt(String value, String name) throws Exception  {
-        return getInt(value, 0, Integer.MAX_VALUE, name, " (ожидалось неотрицательное целое число)");
+    public static int getInt(String value, String name) throws ConfigException  {
+        return getInt(value, name, Integer.MIN_VALUE, Integer.MAX_VALUE, " (integer expected)");
     }
 
-    public static int getPInt(String value, String name) throws Exception  {
-        return getInt(value, 0, Integer.MAX_VALUE, name, " (ожидалось положительное целое число)");
+    public static int getUInt(String value, String name) throws ConfigException  {
+        return getInt(value, name, 0, Integer.MAX_VALUE, " (non-negative integer expected)");
     }
 
-    public static int getUInt(String value, int limit, String name) throws Exception  {
-        return getInt(value, 0, limit-1, name, " (ожидалось целое число от 0 до "+(limit-1)+")");
+    public static int getUInt(String value, String name, int limit) throws ConfigException  {
+        return getInt(value, name, 0, limit-1);
     }
 
-    public static Number getNumber(String value, String name, DecimalFormat format) throws Exception
+    public static int getPInt(String value, String name) throws ConfigException  {
+        return getInt(value, name, 1, Integer.MAX_VALUE, " (positive integer expected)");
+    }
+
+    public static Number getNumber(String value, String name, DecimalFormat format) throws ConfigException
     {
         checkNotEmpty(value, name);
         try  {  return format.parse(value);  }
-        catch (ParseException e)  {  throw new Exception (
-                "Неправильное значение "+name+" (ожидалось число в формате '"+format.toPattern()+"'): "+value);  }
+        catch (ParseException e)  {  throw new ConfigException (
+                "Wrong "+name+" (number in '"+format.toPattern()+"' expected): "+value);  }
     }
 
-    public static double getDouble(String value, String name, DecimalFormat format) throws Exception
+    public static double getDouble(String value, String name, DecimalFormat format) throws ConfigException
     {
         return getNumber(value, name, format).doubleValue();
     }
 
-    public static boolean getBool(String value, String name, String falseValue, String trueValue) throws Exception
+    public static boolean getBool(String value, String name) throws ConfigException
     {
         checkNotEmpty(value, name);
-        if (value.equals(falseValue))  return false;
-        if (value.equals(trueValue))  return true;
-        throw new Exception ("Неправильное значение "+name+" (ожидалось true или false): "+value);
+        if (value.equals("false") || value.equals("no") || value.equals("off"))  return false;
+        else if (value.equals("true") || value.equals("yes") || value.equals("on"))  return true;
+        else  throw new ConfigException ("Wrong "+name+" ('true', 'false', 'yes', 'no', 'on', 'off' allowed): "+value);
     }
 
-    public static boolean getBool(String value, String name) throws Exception
-    {
-        return getBool(value, name, "false", "true");
-    }
-
-    public static boolean getBool(String value, String name, boolean defaultValue) throws Exception
+    public static boolean getBool(String value, String name, boolean defaultValue) throws ConfigException
     {
         if (value==null || value.length()==0)  return defaultValue;
-        if (value.equals("true"))  return true;
-        if (value.equals("false"))  return false;
-        throw new Exception ("Неправильное значение "+name+" (ожидалось true или false): "+value);
+        return getBool(value, name);
+    }
+
+    public static boolean getBool(String value, String name, String trueValue, String falseValue) throws ConfigException
+    {
+        checkNotEmpty(value, name);
+        if (trueValue.equals(value))  return true;
+        else if (falseValue.equals(value))  return false;
+        else  {
+            throw new ConfigException (new StringList("Wrong ", name, " ('").escape(trueValue).append("' or '")
+                    .escape(falseValue).append("' allowed): ", value).toString());
+        }
     }
 
 
     //----------------        properties        ----------------
 
-    public static Properties readProperties(Properties properties, String fileName, String encoding) throws IOException
+    public static Properties readProperties(Properties properties, InputStream input, String encoding) throws IOException
     {
-        FileInputStream propertiesInput = new FileInputStream (fileName);
-        try  {  properties.load(propertiesInput);  }
-        finally  {  propertiesInput.close();  }
+        try  {  properties.load(input);  }
+        finally  {  input.close();  }
         //    исправить кодировку
         for (Map.Entry<Object, Object> property : properties.entrySet())
             property.setValue(new String(property.getValue().toString().getBytes("ISO-8859-1"), encoding));
@@ -1055,17 +1069,22 @@ public class Util
             properties.put(((String)key).substring("property.".length()), System.getProperty((String)key));
         return properties;
     }
-    public static Properties readProperties(String fileName, String encoding) throws IOException  {
-        Properties properties = new Properties ();
-        return readProperties(properties, fileName, encoding);
+    public static Properties readProperties(InputStream input, String encoding) throws IOException  {
+        return readProperties(new Properties(), input, encoding);
     }
-    public static Properties readProperties(Properties properties) throws IOException  {
-        return readProperties(properties, new File ("properties.properties").exists() ? "properties.properties" : "config.properties",
-                System.getProperty("file.encoding"));
+    public static Properties readProperties(InputStream input) throws IOException  {
+        return readProperties(new Properties(), input, System.getProperty("file.encoding"));
+    }
+    public static Properties readProperties(String fileName, String encoding) throws IOException  {
+        return readProperties(new Properties(), new FileInputStream(fileName), encoding);
+    }
+    public static Properties readProperties(String fileName) throws IOException  {
+        return readProperties(new Properties(), new FileInputStream(fileName), System.getProperty("file.encoding"));
     }
     public static Properties readProperties() throws IOException  {
-        Properties properties = new Properties ();
-        return readProperties(properties);
+        File file = new File("config.properties");
+        FileInputStream input = new FileInputStream (file.exists() ? file : new File("properties.properties"));
+        return readProperties(new Properties(), input, System.getProperty("file.encoding"));
     }
 
     public static Properties subProperties(Properties source, final String prefix) throws IOException
@@ -1076,31 +1095,51 @@ public class Util
         return result;
     }
 
-    public static String get(Properties properties, String name) throws Exception  {
-        return checkNotNull(properties.getProperty(name), "настройка "+name);
+    private static String propName(String name) {
+        return "config property '"+name+"'";
     }
 
-    public static String get(Properties properties, String name, String defaultValue) throws Exception
+    public static String get(Properties properties, String name) throws Exception  {
+        return checkNotNull(properties.getProperty(name), propName(name));
+    }
+
+    public static String get(Properties properties, String name, String defaultValue) throws ConfigException
     {
         String value = properties.getProperty(name);
         if (value==null || value.length()==0)  return defaultValue;
         return value;
     }
 
-    public static String getNotEmpty(Properties properties, String name) throws Exception  {
-        return checkNotEmpty(properties.getProperty(name), "настройка "+name);
+    public static String getNotEmpty(Properties properties, String name) throws ConfigException  {
+        return checkNotEmpty(properties.getProperty(name), propName(name));
     }
 
-    public static int getInt(Properties properties, String name) throws Exception  {
-        return getInt(properties.getProperty(name), "настройки "+name);
+    public static int getInt(Properties properties, String name) throws ConfigException  {
+        return getInt(properties.getProperty(name), propName(name));
     }
 
-    public static boolean getBool(Properties properties, String name) throws Exception  {
-        return getBool(properties.getProperty(name), "настройка "+name);
+    public static int getInt(Properties properties, String name, int minValue, int maxValue) throws ConfigException  {
+        return getInt(properties.getProperty(name), propName(name), minValue, maxValue);
     }
 
-    public static boolean getBool(Properties properties, String name, boolean defaultValue) throws Exception  {
-        return getBool(properties.getProperty(name), "настройка "+name, defaultValue);
+    public static int getUInt(Properties properties, String name) throws ConfigException  {
+        return getUInt(properties.getProperty(name), propName(name));
+    }
+
+    public static int getUInt(Properties properties, String name, int limit) throws ConfigException  {
+        return getUInt(properties.getProperty(name), propName(name), limit);
+    }
+
+    public static int getPInt(Properties properties, String name) throws ConfigException  {
+        return getUInt(properties.getProperty(name), propName(name));
+    }
+
+    public static boolean getBool(Properties properties, String name) throws ConfigException  {
+        return getBool(properties.getProperty(name), propName(name));
+    }
+
+    public static boolean getBool(Properties properties, String name, boolean defaultValue) throws ConfigException  {
+        return getBool(properties.getProperty(name), propName(name), defaultValue);
     }
 
     public static <T extends Exception> void getAll(Properties properties, String prefix, KeyValueConsumer<String, String, T> handler) throws T  {
@@ -1155,7 +1194,7 @@ public class Util
 
     //----------------        всякая фигня        ----------------
 
-    // TODO этому методу место в ArrayUtils (или CheckUtils)
+    @SuppressWarnings("unchecked")
     public static <Type> ArrayList<Type> asList (Object... items)  throws NoSuchFieldException, IllegalAccessException
     {
         ArrayList<Type> list = new ArrayList<Type> ();

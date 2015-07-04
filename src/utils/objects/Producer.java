@@ -9,9 +9,9 @@ import java.util.Iterator;
  * Date: 17.09.14
  * Time: 21:52
  */
-public interface Producer<T, E extends Throwable>
+public interface Producer<T, Ex extends Throwable>
 {
-    public T next() throws E;
+    public T next() throws Ex;
 
     public static interface E<T> extends Producer<T, Exception> {}
     public static interface R<T> extends Producer<T, RuntimeException> {}

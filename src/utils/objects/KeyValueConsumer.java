@@ -9,27 +9,27 @@ import java.util.Map;
  * Date: 17.11.14
  * Time: 1:52
  */
-public interface KeyValueConsumer<K, V, E extends Exception>
+public interface KeyValueConsumer<K, V, Ex extends Throwable>
 {
-    public void process(K key, V value) throws E;
+    public void process(K key, V value) throws Ex;
 
     public interface E<K, V> extends KeyValueConsumer<K, V, Exception> {}
     public interface R<K, V> extends KeyValueConsumer<K, V, RuntimeException> {}
     public interface IO<K, V> extends KeyValueConsumer<K, V, IOException> {}
 
-    public interface S<V, E extends Exception> extends KeyValueConsumer<String, V, E> {
+    public interface S<V, Ex extends Throwable> extends KeyValueConsumer<String, V, Ex> {
         public interface E<V> extends S<V, Exception>  {}
         public interface R<V> extends S<V, RuntimeException>  {}
         public interface IO<V> extends S<V, IOException>  {}
     }
 
-    public interface SO<E extends Exception> extends KeyValueConsumer<String, Object, E> {
+    public interface SO<Ex extends Throwable> extends KeyValueConsumer<String, Object, Ex> {
         public interface E extends SO<Exception>  {}
         public interface R extends SO<RuntimeException>  {}
         public interface IO extends SO<IOException>  {}
     }
 
-    public interface SS<E extends Exception> extends KeyValueConsumer<String, String, E> {
+    public interface SS<Ex extends Throwable> extends KeyValueConsumer<String, String, Ex> {
         public interface E extends SS<Exception>  {}
         public interface R extends SS<RuntimeException>  {}
         public interface IO extends SS<IOException>  {}

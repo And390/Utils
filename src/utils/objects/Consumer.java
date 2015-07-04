@@ -10,9 +10,9 @@ import java.util.Collection;
  * Date: 20.12.14
  * Time: 1:09
  */
-public interface Consumer<T, E extends Throwable>
+public interface Consumer<T, Ex extends Throwable>
 {
-    public void process(T object) throws E;
+    public void process(T object) throws Ex;
 
     public interface E<T> extends Consumer<T, Exception>  {}
     public interface R<T> extends Consumer<T, RuntimeException>  {}

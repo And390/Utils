@@ -1,8 +1,5 @@
 package utils.objects;
 
-import utils.Util;
-
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -11,21 +8,21 @@ import java.util.HashMap;
  * Date: 09.08.14
  * Time: 0:22
  */
-public interface TableHandler<E extends Exception>
+public interface TableHandler<Ex extends Exception>
 {
-    public void processRow(int rowIndex) throws E;
-    public void process(int rowIndex, int colIndex, String value) throws E;
+    public void processRow(int rowIndex) throws Ex;
+    public void process(int rowIndex, int colIndex, String value) throws Ex;
 
     public interface E extends TableHandler<Exception>  {}
     public interface R extends TableHandler<RuntimeException>  {}
 
 
-    public static abstract class List<E extends Exception> implements TableHandler<E>
+    public static abstract class List<Ex extends Exception> implements TableHandler<Ex>
     {
         public final ArrayList<String> row = new ArrayList<String> ();
 
         @Override
-        public void process(int rowIndex, int colIndex, String value)  {
+        public void process(int rowIndex, int colIndex, String value) throws Ex  {
             if (colIndex==0)  row.clear();
             row.add(value);
         }
@@ -59,14 +56,6 @@ public interface TableHandler<E extends Exception>
             Integer i = header.get(ignoreCase ? name.toLowerCase() : name);
             if (i==null)  throw new Exception ("Заголовок не найден: "+name);
             return row.get(i);
-        }
-
-        public boolean getBool(String name, String trueValue, String falseValue) throws Exception  {
-            return Util.getBool(get(name), "колонки " + name, trueValue, falseValue);
-        }
-
-        public double getDouble(String name, DecimalFormat format) throws Exception  {
-            return Util.getDouble(get(name), name, format);
         }
     }
 }
