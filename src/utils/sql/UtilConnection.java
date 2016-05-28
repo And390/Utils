@@ -220,9 +220,10 @@ public class UtilConnection extends ConnectionWrapper
         if (result!=1)  throw new SQLException ("Wrong update result: "+result);
     }
 
-    public void executeUpdateOneOrZero(String query, Object... parameters) throws SQLException  {
+    public boolean executeUpdateOneOrZero(String query, Object... parameters) throws SQLException  {
         int result = executeUpdate(query, parameters);
         if (result!=0 && result!=1)  throw new SQLException ("Wrong update result: "+result);
+        return result == 1;
     }
 
 

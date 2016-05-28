@@ -78,6 +78,11 @@ public class StringList extends ArrayList<String> implements RuntimeAppendable
         return this;
     }
 
+    public StringList nl()  {
+        this.append("\n");
+        return this;
+    }
+
     @Override
     public String toString()
     {

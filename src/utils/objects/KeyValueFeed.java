@@ -10,20 +10,20 @@ import java.util.*;
  */
 public interface KeyValueFeed<K, V, Ex extends Throwable>
 {
-    public boolean next();
-    public K getKey();
-    public V getValue();
+    public boolean next() throws Ex;
+    public K getKey() throws Ex;
+    public V getValue() throws Ex;
 
     public interface E<K, V> extends KeyValueFeed<K, V, Exception>  {}
     public interface R<K, V> extends KeyValueFeed<K, V, RuntimeException>  {}
     public interface IO<K, V> extends KeyValueFeed<K, V, IOException>  {}
 
-    public interface SS<Ex extends Throwable> extends KeyValueFeed<String, String, Ex>  {
+    public interface SS<Ex extends Exception> extends KeyValueFeed<String, String, Ex>  {
         public interface E<K, V> extends SS<Exception>  {}
         public interface R<K, V> extends SS<RuntimeException>  {}
         public interface IO<K, V> extends SS<IOException>  {}
     }
-    public interface SO<Ex extends Throwable> extends KeyValueFeed<String, Object, Ex>  {
+    public interface SO<Ex extends Exception> extends KeyValueFeed<String, Object, Ex>  {
         public interface E<K, V> extends SO<Exception>  {}
         public interface R<K, V> extends SO<RuntimeException>  {}
         public interface IO<K, V> extends SO<IOException>  {}

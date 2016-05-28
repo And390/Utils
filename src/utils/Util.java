@@ -326,21 +326,25 @@ public class Util
         return string.endsWith(suffix) ? string.substring(0, string.length()-suffix.length()) : string;
     }
 
+    @Deprecated  // use sliceBefore
     public static String cutAfter(String string, char target)  {
         int i = string.indexOf(target);
         return i==-1 ? string : string.substring(0, i);
     }
 
+    @Deprecated  // use sliceBefore
     public static String cutAfter(String string, String target)  {
         int i = string.indexOf(target);
         return i==-1 ? string : string.substring(0, i);
     }
 
+    @Deprecated  // use sliceAfter
     public static String cutBefore(String string, char target)  {
         int i = string.lastIndexOf(target);
         return i==-1 ? string : string.substring(i+1);
     }
 
+    @Deprecated  // use sliceAfter
     public static String cutBefore(String string, String target)  {
         int i = string.lastIndexOf(target);
         return i==-1 ? string : string.substring(i+target.length());
@@ -359,6 +363,33 @@ public class Util
         if (i2!=-1)  i = i2;
         else if (i>0 && string.charAt(i-1)=='\r')  i--;
         return i==-1 ? string : string.substring(0, i);
+    }
+
+    public static String sliceBefore(String string, char target)  {
+        int i = string.indexOf(target);
+        return i==-1 ? string : string.substring(0, i);
+    }
+    public static String sliceBefore(String string, String target)  {
+        int i = string.indexOf(target);
+        return i==-1 ? string : string.substring(0, i);
+    }
+
+    public static String sliceAfter(String string, char target)  {
+        int i = string.indexOf(target);
+        return i==-1 ? string : string.substring(i+1);
+    }
+    public static String sliceAfter(String string, String target)  {
+        int i = string.indexOf(target);
+        return i==-1 ? string : string.substring(i+target.length());
+    }
+
+    public static String sliceAfterLast(String string, char target)  {
+        int i = string.lastIndexOf(target);
+        return i==-1 ? string : string.substring(i+1);
+    }
+    public static String sliceAfterLast(String string, String target)  {
+        int i = string.lastIndexOf(target);
+        return i==-1 ? string : string.substring(i+target.length());
     }
 
     public static String ellipsis(String source, int n)  {
@@ -921,7 +952,7 @@ public class Util
             if (i2>i0)
                 try  {  int count = Integer.parseInt(fileName.substring(i2+1, i-1));
                         return fileName.substring(0, i2+1) + (count+1) + fileName.substring(i-1);  }
-                catch (NumberFormatException e)  {}
+                catch (NumberFormatException ignore)  {}
         }
         //    если не найден, вернуть с индексом 2
         return fileName.substring(0, i) + " (2)" + fileName.substring(i);
@@ -1103,7 +1134,7 @@ public class Util
         return checkNotNull(properties.getProperty(name), propName(name));
     }
 
-    public static String get(Properties properties, String name, String defaultValue) throws ConfigException
+    public static String get(Properties properties, String name, String defaultValue)
     {
         String value = properties.getProperty(name);
         if (value==null || value.length()==0)  return defaultValue;
@@ -1140,6 +1171,23 @@ public class Util
 
     public static boolean getBool(Properties properties, String name, boolean defaultValue) throws ConfigException  {
         return getBool(properties.getProperty(name), propName(name), defaultValue);
+    }
+
+    public static String[] getList(Properties properties, String name, String separator) throws ConfigException {
+        String value = getNotEmpty(properties, name);
+        return slice(value, separator);
+    }
+
+    public static String[] getList(Properties properties, String name, String separator, String[] defaultValue) {
+        String value = get(properties, name, "");
+        if (value.length() == 0)  return defaultValue;
+        return slice(value, separator);
+    }
+
+    public static <T extends Collection<String>> T getList(Properties properties, String name, String separator, T result) {
+        String value = get(properties, name, "");
+        if (value.length() == 0)  return result;
+        return slice(value, separator, result);
     }
 
     public static <T extends Exception> void getAll(Properties properties, String prefix, KeyValueConsumer<String, String, T> handler) throws T  {

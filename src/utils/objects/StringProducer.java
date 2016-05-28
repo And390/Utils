@@ -15,11 +15,11 @@ public interface StringProducer extends Producer<String, RuntimeException>
 
     public static abstract class Instances
     {
-        public static StringProducer.R get(final Iterator<String> iterator)  {
-            return new StringProducer.R()  {
+        public static StringProducer.R<String> get(final Iterator<String> iterator)  {
+            return new StringProducer.R<String>()  {
                 public String next()  {  if (!iterator.hasNext())  return null;  return iterator.next();  }
             };
         }
-        public static StringProducer.R get(final Iterable<String> iterable)  {  return get(iterable.iterator());  }
+        public static StringProducer.R<String> get(final Iterable<String> iterable)  {  return get(iterable.iterator());  }
     }
 }

@@ -41,9 +41,10 @@ public abstract class BufferInputStream extends InputStream
                 if (!readBuffer())  return readed==0 ? -1 : readed;
             }
             //    если в буфере больше байт, чем запрошено, скопировать нужное количетво и вернуть результат
-            int rest = count - position;
+            int rest = count;
             if (rest>=length)  {
                 System.arraycopy(buffer, position, bytes, offset, length);
+                count -= length;
                 position += length;
                 readed += length;
                 return readed;
@@ -53,6 +54,7 @@ public abstract class BufferInputStream extends InputStream
                 System.arraycopy(buffer, position, bytes, offset, rest);
                 offset += rest;
                 length -= rest;
+                count = 0;
                 position += rest;
                 readed += rest;
             }
@@ -68,7 +70,11 @@ public abstract class BufferInputStream extends InputStream
 
     public int available() throws IOException
     {
-        int rest = count - position;
-        return rest;
+        return count;
+    }
+
+    @Override
+    public long skip(long n) throws IOException {
+        throw new UnsupportedOperationException();
     }
 }
