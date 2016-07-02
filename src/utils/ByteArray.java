@@ -294,7 +294,7 @@ public class ByteArray {
             size += readed;
             if (size==data.length)
                 if (size==expectedSize)  {
-                    readed = input.read();
+                    readed = input.read();  // TODO can call available before read here (to reduce read calls)
                     if (readed==-1)  break;
                     expectedSize = size + 1 + input.available();
                     data = realloc(data, expectedSize);
@@ -374,6 +374,33 @@ public class ByteArray {
         FileOutputStream output = new FileOutputStream(file);
         try  {  output.write(data, 0, size);  }
         finally  {  output.close();  }
+    }
+
+    public static void copy(InputStream in, OutputStream out) throws IOException
+    {
+        byte[] buffer = new byte[8192];
+        while (true)  {
+            int read = in.read(buffer);
+            if (read == -1)  break;
+            out.write(buffer, 0, read);
+        }
+    }
+
+    public static void copyByStrictBuf(InputStream in, OutputStream out) throws IOException
+    {
+        byte[] buffer = new byte[8192];
+        while (true)  {
+            int offset = 0;
+            int read;
+            do  {
+                read = in.read(buffer, offset, buffer.length - offset);
+                if (read == -1)  break;
+                offset += read;
+            }  while (offset != buffer.length);
+            if (offset == 0)  break;
+            out.write(buffer, 0, offset);
+            if (read == -1)  break;
+        }
     }
 
 

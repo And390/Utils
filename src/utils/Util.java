@@ -285,6 +285,16 @@ public class Util
         return toString(new ArrayIterable<String>(strings), "");
     }
 
+    public static <T> String toString(T[] objects, String separator)  {
+        String[] strings = new String [objects.length];
+        for (int i=0; i<objects.length; i++)  strings[i] = objects[i].toString();
+        return toString(new ArrayIterable<String>(strings), separator);
+    }
+
+    public static <T> String toString(T[] objects)  {
+        return toString(objects, "");
+    }
+
     public static class TestToString  {
         public static void main(String[] args)  {
             System.out.println(Util.toString(new String[]{}));
@@ -917,8 +927,7 @@ public class Util
     public static <E extends Throwable> void listFiles(String filename, Consumer<File, E> handler) throws E  {  listFiles(new File (filename), handler);  }
     public static ArrayList<File> listFiles(String filename)  {  return listFiles(new File (filename));  }
 
-    // изменяет расширение файла (lastExtension - расширение определяется по последней точки или по первой)
-    public static String setFileExt(String fileName, String ext, boolean lastExtension)  {
+    private static int fileExtPos(String fileName, boolean lastExtension)  {
         //    определить позицию имени файла (последний слэш)
         int i0 = fileName.lastIndexOf('/') + 1;
         if (!File.separator.equals("/"))  {
@@ -926,10 +935,18 @@ public class Util
             if (i02>i0)  i0 = i02;
         }
         //    определить позицию расширения файла (первая точка в имени файла)
-        int i;
-        if (lastExtension)  {  i = fileName.lastIndexOf('.');  if (i<i0)  i = fileName.length();  }
-        else  i = indexOf(fileName, '.', i0);
-        //    заменить расширение
+        if (lastExtension)  {  int i = fileName.lastIndexOf('.');  return i<i0 ? -1 : i;  }
+        else  return fileName.indexOf('.', i0);
+    }
+
+    public static String fileExt(String fileName, boolean lastExtension)  {
+        int i = fileExtPos(fileName, lastExtension);
+        return i == -1 ? null : fileName.substring(i+1);
+    }
+
+    // изменяет расширение файла (lastExtension - расширение определяется по последней точки или по первой)
+    public static String setFileExt(String fileName, String ext, boolean lastExtension)  {
+        int i = fileExtPos(fileName, lastExtension);
         return fileName.substring(0, i) + ext;
     }
     public static String setFileExt(String fileName, String ext)  {  return setFileExt(fileName, ext, false);  }
@@ -1083,6 +1100,23 @@ public class Util
             throw new ConfigException (new StringList("Wrong ", name, " ('").escape(trueValue).append("' or '")
                     .escape(falseValue).append("' allowed): ", value).toString());
         }
+    }
+
+    public static <T extends Enum<T>> T getEnum(String value, String name, Class<T> class_) throws ConfigException
+    {
+        checkNotEmpty(value, name);
+        try  {  return Enum.valueOf(class_, value);  }
+        catch (IllegalArgumentException e) {  throw new ConfigException("Wrong '" + name + "' value: " + value
+                + " (expected one of: " + Util.toString(class_.getEnumConstants(), ", ") + ")");  }
+    }
+
+    public static <T> T get(String value, String name, Map<String, T> map) throws ConfigException
+    {
+        checkNotEmpty(value, name);
+        T result = map.get(value);
+        if (result == null)  throw new ConfigException("Wrong '" + name + "' value: " + value
+                + " (expected one of: " + Util.toString(map.keySet(), ", ") + ")");
+        return result;
     }
 
 
