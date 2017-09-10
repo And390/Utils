@@ -332,8 +332,21 @@ public class Util
         return string.startsWith(prefix) ? string.substring(prefix.length()) : string;
     }
 
+    public static String cutIfStartsOrNull(String string, String prefix)  {
+        return string.startsWith(prefix) ? string.substring(prefix.length()) : null;
+    }
+
     public static String cutIfEnds(String string, String suffix)  {
         return string.endsWith(suffix) ? string.substring(0, string.length()-suffix.length()) : string;
+    }
+
+    public static String cutIfSurroundedOrNull(String string, String prefix, String suffix)  {
+        return string.length() >= prefix.length() + suffix.length() && string.startsWith(prefix) && string.endsWith(suffix) ? string.substring(prefix.length(), string.length()-suffix.length()) : null;
+    }
+
+    public static String cutIfSurrounded(String string, String prefix, String suffix)  {
+        String result = cutIfSurroundedOrNull(string, prefix, suffix);
+        return result != null ? result : string;
     }
 
     @Deprecated  // use sliceBefore
@@ -381,6 +394,15 @@ public class Util
     }
     public static String sliceBefore(String string, String target)  {
         int i = string.indexOf(target);
+        return i==-1 ? string : string.substring(0, i);
+    }
+
+    public static String sliceBeforeLast(String string, char target)  {
+        int i = string.lastIndexOf(target);
+        return i==-1 ? string : string.substring(0, i);
+    }
+    public static String sliceBeforeLast(String string, String target)  {
+        int i = string.lastIndexOf(target);
         return i==-1 ? string : string.substring(0, i);
     }
 
@@ -951,55 +973,73 @@ public class Util
     }
     public static String setFileExt(String fileName, String ext)  {  return setFileExt(fileName, ext, false);  }
 
-    // добавляет к имени файла (2) перед расширением, или, если там уже есть такая цифра, увеличивает её на один
-    public static String incFileName(String fileName, boolean lastExtension)  {
-        //    определить позицию имени файла (последний слэш)
-        int i0 = fileName.lastIndexOf('/') + 1;
-        if (!File.separator.equals("/"))  {
-            int i02 = fileName.lastIndexOf(File.separator) + 1;
-            if (i02>i0)  i0 = i02;
-        }
-        //    определить позицию расширения файла (первая точка в имени файла)
-        int i;
-        if (lastExtension)  {  i = fileName.lastIndexOf('.');  if (i<i0)  i = fileName.length();  }
-        else  i = indexOf(fileName, '.', i0);
-        //    найти индекс в скобках
-        if (i>=4 && fileName.charAt(i-1)==')')  {
-            int i2 = fileName.lastIndexOf('(', i-2);
-            if (i2>i0)
-                try  {  int count = Integer.parseInt(fileName.substring(i2+1, i-1));
-                        return fileName.substring(0, i2+1) + (count+1) + fileName.substring(i-1);  }
-                catch (NumberFormatException ignore)  {}
-        }
-        //    если не найден, вернуть с индексом 2
-        return fileName.substring(0, i) + " (2)" + fileName.substring(i);
-    }
-    public static String incFileName(String fileName)  {  return incFileName(fileName, false);  }
-
-    // версия, которая циклически делает то же, если файл существует (пока не будет найден не существующих)
-    public static String incFileNameWhileExists(String fileName, boolean lastExtension)  {
-        while (new File (fileName).exists())  fileName = incFileName(fileName, lastExtension);
-        return fileName;
-    }
-
-    public static String incFileNameWhileExists(String fileName)  {  return incFileNameWhileExists(fileName, false);  }
-
     // добавляет suffix к имени файла перед расширением (lastExtension - расширение определяется по последней точки или по первой)
-    public static String addFileName(String fileName, String suffix, boolean lastExtension)  {
+    //  или заменяет старый old, если указан != null
+    public static String replaceFileNameSuffix(String fileName, String old, String suffix, boolean lastExtension)  {
         //    определить позицию имени файла (последний слэш)
         int i0 = fileName.lastIndexOf('/') + 1;
         if (!File.separator.equals("/"))  {
             int i02 = fileName.lastIndexOf(File.separator) + 1;
             if (i02>i0)  i0 = i02;
         }
-        //    определить позицию расширения файла (первая точка в имени файла)
+        //    определить позицию расширения файла (первая или последняя точка в имени файла)
         int i;
         if (lastExtension)  {  i = fileName.lastIndexOf('.');  if (i<i0)  i = fileName.length();  }
         else  i = indexOf(fileName, '.', i0);
         //    добавить суффикс к имени
-        return fileName.substring(0, i) + suffix + fileName.substring(i);
+        if (old != null && fileName.startsWith(old, i - old.length()))
+            return fileName.substring(0, i - old.length()) + suffix + fileName.substring(i);
+        else
+            return fileName.substring(0, i) + suffix + fileName.substring(i);
+    }
+    // добавляет suffix к имени файла перед расширением (lastExtension - расширение определяется по последней точки или по первой)
+    public static String addFileName(String fileName, String suffix, boolean lastExtension)  {
+        return replaceFileNameSuffix(fileName, null, suffix, lastExtension);
     }
     public static String addFileName(String fileName, String suffix)  {  return addFileName(fileName, suffix, false);  }
+
+    // если файл существует, добавляет к имени файла (2) перед расширением, если такой тоже есть, увеличивает её на один и так далее
+    public static String incFileNameWhileExists(String fileName, boolean lastExtension, String numPrefix, String numSuffix)  {
+        String suffix=null;
+        for (int i=2; new File (fileName).exists(); i++)  {
+            String old = suffix;
+            suffix = numPrefix + i + numSuffix;
+            fileName = replaceFileNameSuffix(fileName, old, suffix, lastExtension);
+        }
+        return fileName;
+    }
+    public static String incFileNameWhileExists(String fileName, boolean lastExtension)  {
+        return incFileNameWhileExists(fileName, lastExtension, " (", ")");
+    }
+    public static String incFileNameWhileExists(String fileName)  {  return incFileNameWhileExists(fileName, false);  }
+    public static String incFileNameWhileExistsSimple(String fileName, boolean lastExtension)  {
+        return incFileNameWhileExists(fileName, lastExtension, "_", "");
+    }
+    public static String incFileNameWhileExistsSimple(String fileName)  {  return incFileNameWhileExistsSimple(fileName, false);  }
+
+    public static class TestIncFileNameWhileExists
+    {
+        public static void main(String[] agrs) throws Exception {
+            if (!"some/unexisted file.txt".equals(incFileNameWhileExists("some/unexisted file.txt")))  throw new RuntimeException();
+            if (!"src/utils/Util (2).java".equals(incFileNameWhileExists("src/utils/Util.java")))  throw new RuntimeException();
+            File file = new File("test.em.txt");
+            boolean needDelete = false;
+            if (!file.exists())  {  createNew(file);  needDelete = true;  }
+            try {
+                if (!"test (2).em.txt".equals(incFileNameWhileExists("test.em.txt")))  throw new RuntimeException();
+
+                File file2 = new File("test (2).em.txt");
+                boolean needDelete2 = false;
+                if (!file2.exists())  {  createNew(file2);  needDelete2 = true;  }
+                try  {
+                    if (!"test (3).em.txt".equals(incFileNameWhileExists("test.em.txt")))  throw new RuntimeException();
+                    if (!"test.em (2).txt".equals(incFileNameWhileExists("test.em.txt", true)))  throw new RuntimeException();
+                }
+                finally  {  if (needDelete2)  delete(file2);  }
+            }
+            finally  {  if (needDelete)  delete(file);  }
+        }
+    }
 
     public static void mkdir(File file) throws IOException  {
         if (!file.mkdir())  throw new IOException ("Can't make a new directory "+file);
@@ -1008,16 +1048,27 @@ public class Util
     // может быть сделать отдельный метод delete для удаления файла по дефолту, а этот переименовать?
     // все-таки чаще нужно удалять отдельные файлы, а непредусмотренное удаление каталога может быть опасно
     public static void delete(File file) throws IOException  {
-        if (file.isDirectory())  {
-            File[] childs = file.listFiles();
-            if (childs==null)  throw new IOException ("Can't list files of "+file);
-            for (File child : childs)  delete(child);
-        }
+        if (file.isDirectory())  clearDir(file);
         if (!file.delete())  throw new IOException ("Can't delete a file or directory "+file);
+    }
+
+    public static void clearDir(File file) throws IOException  {
+        if (!file.isDirectory())  throw new IOException("File isn't a directory");
+        File[] childs = file.listFiles();
+        if (childs==null)  throw new IOException ("Can't list files of "+file);
+        for (File child : childs)  delete(child);
     }
 
     public static void renameTo(File src, File dst) throws IOException  {
         if (!src.renameTo(dst))  throw new IOException ("Can't rename "+src+" to "+dst);
+    }
+
+    public static void createNew(File file) throws IOException  {
+        if (!file.createNewFile())  throw new RuntimeException("Can't create new file: "+file);
+    }
+
+    public static void createDir(File file) throws IOException  {
+        if (!file.mkdirs())  throw new RuntimeException("Can't create new directory: "+file);
     }
 
 
